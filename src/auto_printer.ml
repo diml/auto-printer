@@ -47,7 +47,7 @@ module Cli = struct
       const main
       $ Arg.(
           value & opt_all dir []
-          & info ["-I"] ~docv:"DIR" ~doc:"Add a directory to the search path")
+          & info ["I"] ~docv:"DIR" ~doc:"Add a directory to the search path")
       $ Arg.(
           value & pos_all file []
           & info [] ~docv:"CMI-FILE" ~doc:"Process the follwing .cmi file"))
