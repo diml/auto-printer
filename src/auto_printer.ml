@@ -1,4 +1,26 @@
-open Stdlabels
+open StdLabels
+open Cmi_format
+open Asttypes
+open Types
+
+let rec walk_sig path signature =
+  List.iter signature ~f:(function
+    | Sig_module (id, {md_type = Mty_signature s; _}, _) ->
+        walk_sig (Printf.sprintf "%s.%s" path (Ident.name id)) s
+    | Sig_value (id, vd) ->
+        if
+          List.exists vd.val_attributes ~f:(function
+            | {txt = "toplevel_printer" | "ocaml.toplevel_printer"; _}, _ ->
+                true
+            | _ -> false )
+        then
+          Printf.printf "#install_printer %S\n"
+            (Printf.sprintf "%s.%s" path (Ident.name id))
+    | _ -> () )
+
+let process_file fn =
+  let cmi = Cmi_format.read_cmi fn in
+  walk_sig cmi.cmi_name cmi.cmi_sign
 
 module Cli = struct
   open Cmdliner
@@ -18,14 +40,17 @@ module Cli = struct
     let main includes files =
       List.iter includes ~f:(fun p ->
           Clflags.include_dirs := p :: !Clflags.include_dirs;
-          Compmisc.init_path false )
+          Compmisc.init_path false;
+          List.iter files ~f:process_file )
     in
-    let%map common = Common.term in
-    Common.set_common common ~targets:[];
-    let log = Log.create common in
-    Scheduler.go ~log ~common (fun () ->
-        Import.Main.setup ~log common
-        >>= fun setup -> Dune.Upgrader.upgrade setup.file_tree )
+    Term.(
+      const main
+      $ Arg.(
+          value & opt_all dir []
+          & info ["-I"] ~docv:"DIR" ~doc:"Add a directory to the search path")
+      $ Arg.(
+          value & pos_all file []
+          & info [] ~docv:"CMI-FILE" ~doc:"Process the follwing .cmi file"))
 
   let command = (term, info)
 
