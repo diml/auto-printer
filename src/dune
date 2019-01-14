@@ -1,0 +1,4 @@
+(executable
+ (name auto_printer)
+ (public_name auto-printer)
+ (libraries cmdliner compiler-libs.bytecomp))
